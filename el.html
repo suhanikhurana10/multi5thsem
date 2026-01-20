@@ -631,6 +631,45 @@ function speakText(text) {
         return; // ⛔ IMPORTANT — stops mock logic
     }
 
+    // ---------------- SIMPLIFIED → BACKEND ----------------
+if (format === "simplified") {
+
+    const question = document.getElementById("questionInput").value;
+    if (!question.trim()) {
+        alert("Please enter a question first.");
+        return;
+    }
+
+    const outputCard = document.getElementById("outputSimplified");
+    outputCard.querySelector(".output-content").innerHTML =
+        "<div class='loader'></div> Simplifying text...";
+
+    fetch("http://127.0.0.1:5000/simplify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: question })
+    })
+    .then(res => res.json())
+    .then(data => {
+        outputCard.querySelector(".output-content").innerHTML =
+            `<p>${data.simplified}</p>`;
+
+        // OPTIONAL: show metrics
+        document.getElementById("similarityScore").textContent =
+            data.semantic_score.toFixed(2);
+
+        document.getElementById("difficultyChange").textContent =
+            data.difficulty_score.toFixed(2);
+    })
+    .catch(() => {
+        outputCard.querySelector(".output-content").innerHTML =
+            "❌ Backend not running.";
+    });
+
+    return; // ⛔ stops mock logic
+}
+
+
     // ---------------- MOCK OUTPUTS ----------------
     currentFormat = format;
 
