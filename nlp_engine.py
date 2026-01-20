@@ -1,28 +1,36 @@
 import spacy
 import os
 import re
+
 from visuals.geometry import generate_triangle, generate_circle, generate_rectangle
 from visuals.physics import draw_force_diagram, draw_motion_vector
-from visuals.graphs import draw_linear_graph, draw_parabola, draw_hyperbola, draw_bar_graph, plot_points
+from visuals.graphs import (
+    draw_linear_graph,
+    draw_parabola,
+    draw_hyperbola,
+    draw_bar_graph,
+    plot_points
+)
 from visuals.derivative import draw_derivative
 
 
 nlp = spacy.load("en_core_web_sm")
 
-# ----------------- Utility Functions -----------------
+# =====================================================
+# Utility Functions
+# =====================================================
+
 def extract_numbers(text):
     """
-    Extract all numbers from text safely, including integers and floats.
-    Ignores parentheses and commas.
-    Returns a list of numbers as floats.
+    Extract numbers safely (supports integers & decimals)
     """
-    numbers = re.findall(r"[-+]?\d*\.\d+|\d+", text)
-    numbers = [float(num) for num in numbers]
-    return numbers
+    nums = re.findall(r"[-+]?\d*\.\d+|\d+", text)
+    return [float(n) for n in nums]
+
 
 def detect_shape(text):
     """
-    Detect the type of visual: geometry, physics, or graph
+    Detect intent type from input
     """
     text = text.lower()
 
@@ -35,119 +43,115 @@ def detect_shape(text):
         return "rectangle"
 
     # Physics
-    if "force" in text or "newton" in text or "n " in text:
+    if "force" in text or "newton" in text:
         return "force"
     if "motion" in text or "velocity" in text:
         return "motion"
 
-    # Graphs
-    if "graph" in text or "plot" in text or "bar" in text or "points" in text or "parabola" in text or "hyperbola" in text:
-        return "graph"
+    # Calculus
     if "derivative" in text:
         return "derivative"
 
-    
-
+    # Graphs
+    if any(word in text for word in ["graph", "plot", "bar", "points", "parabola", "hyperbola"]):
+        return "graph"
 
     return None
 
-# ----------------- Main Conversion Function -----------------
+
+# =====================================================
+# Main Controller
+# =====================================================
+
 def text_to_image(text, output_folder="generated_images"):
-    """
-    Convert input text to a visual and save as an image
-    """
+
     os.makedirs(output_folder, exist_ok=True)
     shape = detect_shape(text)
     numbers = extract_numbers(text)
 
-    if shape is None:
+    if not shape:
         return None
 
-    # ----------------- Geometry -----------------
+    # =================== GEOMETRY ===================
+
     if shape == "triangle":
-        output_path = os.path.join(output_folder, "triangle.png")
-        return generate_triangle(output_path=output_path)
+        path = os.path.join(output_folder, "triangle.png")
+        return generate_triangle(output_path=path)
 
-    elif shape == "circle":
+    if shape == "circle":
         radius = numbers[0] if numbers else 5
-        output_path = os.path.join(output_folder, "circle.png")
-        return generate_circle(radius=radius, output_path=output_path)
+        path = os.path.join(output_folder, "circle.png")
+        return generate_circle(radius=radius, output_path=path)
 
-    elif shape == "rectangle":
-        length = numbers[0] if len(numbers) > 0 else 6
-        width = numbers[1] if len(numbers) > 1 else 4
-        output_path = os.path.join(output_folder, "rectangle.png")
-        return generate_rectangle(length=length, width=width, output_path=output_path)
+    if shape == "rectangle":
+        l = numbers[0] if len(numbers) > 0 else 6
+        w = numbers[1] if len(numbers) > 1 else 4
+        path = os.path.join(output_folder, "rectangle.png")
+        return generate_rectangle(length=l, width=w, output_path=path)
 
-    # ----------------- Physics -----------------
-    elif shape == "force":
-        value = numbers[0] if numbers else 10  # default 10 N
+    # =================== PHYSICS ===================
 
-        # Detect direction in text
+    if shape == "force":
+        value = numbers[0] if numbers else 10
         direction = "up"
-        if "left" in text.lower():
+
+        if "left" in text:
             direction = "left"
-        elif "right" in text.lower():
+        elif "right" in text:
             direction = "right"
-        elif "down" in text.lower():
+        elif "down" in text:
             direction = "down"
 
-        output_path = os.path.join(output_folder, "force.png")
-        return draw_force_diagram(force_value=value, direction=direction, output_path=output_path)
+        path = os.path.join(output_folder, "force.png")
+        return draw_force_diagram(force_value=value, direction=direction, output_path=path)
 
-    elif shape == "motion":
-        # Motion arrow direction
-        direction = "left" if "left" in text.lower() else "right"
-        output_path = os.path.join(output_folder, "motion.png")
-        return draw_motion_vector(direction=direction, output_path=output_path)
-    elif shape == "derivative":
+    if shape == "motion":
+        direction = "left" if "left" in text else "right"
+        path = os.path.join(output_folder, "motion.png")
+        return draw_motion_vector(direction=direction, output_path=path)
+
+    # =================== DERIVATIVE ===================
+
+    if shape == "derivative":
         try:
-            # Extract expression after "of"
             expr = text.lower().split("of")[1].strip()
-            output_path = os.path.join(output_folder, "derivative.png")
-            return draw_derivative(expr, output_path)
+            path = os.path.join(output_folder, "derivative.png")
+            return draw_derivative(expr, path)
         except:
             return None
 
+    # =================== GRAPHS ===================
 
-    # ----------------- Graphs -----------------
-    elif shape == "graph":
-        text_lower = text.lower()
+    if shape == "graph":
+        t = text.lower()
 
-        # ---------- Parabola ----------
-        if "parabola" in text_lower:
-            points = []
-            # take numbers in pairs as (x,y)
-            for i in range(0, len(numbers), 2):
-                if i+1 < len(numbers):
-                    points.append((numbers[i], numbers[i+1]))
-            output_path = os.path.join(output_folder, "parabola.png")
-            return draw_parabola(points=points, output_path=output_path)
+        # Parabola
+        if "parabola" in t:
+            pts = [(numbers[i], numbers[i+1])
+                   for i in range(0, len(numbers)-1, 2)]
+            path = os.path.join(output_folder, "parabola.png")
+            return draw_parabola(points=pts, output_path=path)
 
-        # ---------- Hyperbola ----------
-        elif "hyperbola" in text_lower:
-            points = []
-            for i in range(0, len(numbers), 2):
-                if i+1 < len(numbers):
-                    points.append((numbers[i], numbers[i+1]))
-            output_path = os.path.join(output_folder, "hyperbola.png")
-            return draw_hyperbola(points=points, output_path=output_path)
+        # Hyperbola
+        if "hyperbola" in t:
+            pts = [(numbers[i], numbers[i+1])
+                   for i in range(0, len(numbers)-1, 2)]
+            path = os.path.join(output_folder, "hyperbola.png")
+            return draw_hyperbola(points=pts, output_path=path)
 
-        # ---------- Points ----------
-        elif "point" in text_lower or "points" in text_lower:
-            output_path = os.path.join(output_folder, "points.png")
-            return plot_points(output_path=output_path)
+        # Scatter points
+        if "point" in t:
+            path = os.path.join(output_folder, "points.png")
+            return plot_points(output_path=path)
 
-        # ---------- Bar Graph ----------
-        elif "bar" in text_lower:
-            output_path = os.path.join(output_folder, "bar_graph.png")
+        # Bar graph
+        if "bar" in t:
+            path = os.path.join(output_folder, "bar_graph.png")
             data = numbers if numbers else [5, 3, 7, 2]
-            return draw_bar_graph(data=data, output_path=output_path)
+            return draw_bar_graph(data=data, output_path=path)
 
-        # ---------- Linear Graph ----------
-        else:
-            output_path = os.path.join(output_folder, "linear_graph.png")
-            return draw_linear_graph(output_path=output_path)
+        # Linear graph (default)
+        path = os.path.join(output_folder, "linear_graph.png")
+        return draw_linear_graph(output_path=path)
 
-    else:
-        return None
+    return None

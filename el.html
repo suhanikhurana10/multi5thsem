@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Adaptive Multi-Format Assessment Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--gray-800);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1rem;
+            opacity: 0.95;
+            margin-bottom: 0.5rem;
+        }
+
+        .sdg-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .main-content {
+            padding: 2rem;
+        }
+
+        .section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 1.25rem;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.875rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .outputs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .output-card {
+            background: var(--gray-50);
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .output-card.generating {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .output-card-title {
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .output-content {
+            background: white;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            color: var(--gray-700);
+            min-height: 100px;
+        }
+
+        .output-content.empty {
+            color: var(--gray-400);
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid var(--gray-300);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .validation-panel {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .validation-hidden {
+            display: none;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: 8px;
+            border: 2px solid var(--gray-200);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+
+        .metric-value.good {
+            color: var(--success);
+        }
+
+        .metric-value.warning {
+            color: var(--warning);
+        }
+
+        .metric-value.danger {
+            color: var(--danger);
+        }
+
+        .qa-checks {
+            margin-top: 1.5rem;
+        }
+
+        .qa-check {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            border: 2px solid var(--gray-200);
+        }
+
+        .check-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+
+        .check-icon.pass {
+            background: var(--success);
+            color: white;
+        }
+
+        .check-icon.fail {
+            background: var(--danger);
+            color: white;
+        }
+
+        .status-section {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-badge.validated {
+            background: var(--success);
+            color: white;
+        }
+
+        .status-badge.flagged {
+            background: var(--warning);
+            color: white;
+        }
+
+        .status-badge.regenerating {
+            background: var(--primary);
+            color: white;
+        }
+
+        .regeneration-notice {
+            background: rgba(245, 158, 11, 0.1);
+            border: 2px solid var(--warning);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: left;
+            color: var(--gray-800);
+        }
+
+        .regeneration-notice strong {
+            color: var(--warning);
+        }
+
+        .download-btn {
+            background: var(--gray-800);
+            color: white;
+            margin-top: 1rem;
+        }
+
+        .download-btn:hover {
+            background: var(--gray-700);
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .info-box {
+            background: rgba(37, 99, 235, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+        }
+
+        .placeholder-visual {
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .alt-text {
+            font-size: 0.8125rem;
+            color: var(--gray-600);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Adaptive Multi-Format Assessment Generator</h1>
+            <p>Research Demonstrator with Semantic Equivalence Validation</p>
+            <span class="sdg-badge">SDG 4: Quality Education | Accessibility-First Assessment Design</span>
+        </header>
+
+        <div class="main-content">
+            <div class="section">
+                <div class="section-title">Input Assessment Question</div>
+                <div class="input-group">
+                    <label for="questionInput">Enter your standard assessment question:</label>
+                    <textarea 
+                        id="questionInput" 
+                        placeholder="Example: Calculate the derivative of f(x) = 3x² + 2x - 5 and evaluate it at x = 2. Show all work and explain the significance of the result."
+                    ></textarea>
+                </div>
+                <!--<div class="info-box">
+                    <strong>Demo Note:</strong> This is a frontend simulation. The system demonstrates the workflow of AI-powered adaptive format generation with validation, but does not perform real ML inference.
+                </div>-->
+            </div>
+
+            <div class="section">
+                <div class="section-title">Generate Adaptive Formats</div>
+                <div class="button-grid">
+                    <button class="btn-primary" onclick="generateFormat('simplified')" id="btnSimplified">
+                        Simplified Text
+                    </button>
+                    <button class="btn-primary" onclick="generateFormat('audio')" id="btnAudio">
+                        Audio Format
+                    </button>
+                    <button class="btn-primary" onclick="generateFormat('braille')" id="btnBraille">
+                        Braille-Ready
+                    </button>
+                    <button class="btn-primary" onclick="generateFormat('visual')" id="btnVisual">
+                        Visual-Enhanced
+                    </button>
+                    <button class="btn-primary" onclick="runEquivalenceCheck()">
+                         Validate & Regenerate
+                    </button>
+
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Generated Outputs</div>
+                <div class="outputs-grid">
+                    <div class="output-card" id="outputSimplified">
+                        <div class="output-card-title">Simplified Text</div>
+                        <div class="output-content empty">Not generated yet</div>
+                    </div>
+                    <div class="output-card" id="outputAudio">
+                        <div class="output-card-title">Audio Format</div>
+                        <div class="output-content empty">Not generated yet</div>
+                    </div>
+                    <div class="output-card" id="outputBraille">
+                        <div class="output-card-title">Braille-Ready Text</div>
+                        <div class="output-content empty">Not generated yet</div>
+                    </div>
+                    <div class="output-card" id="outputVisual">
+                        <div class="output-card-title">Visual-Enhanced</div>
+                        <div class="output-content empty">Not generated yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="validation-panel validation-hidden" id="validationPanel">
+                <div class="section-title">Equivalence Validation</div>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Semantic Similarity Score</div>
+                        <div class="metric-value" id="similarityScore">—</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Difficulty Change</div>
+                        <div class="metric-value" id="difficultyChange">—</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Validation Attempts</div>
+                        <div class="metric-value" id="validationAttempts">—</div>
+                    </div>
+                </div>
+
+                <div class="qa-checks" id="qaChecks"></div>
+
+                <div class="status-section">
+                    <div class="status-badge" id="statusBadge">Validating...</div>
+                    <div id="regenerationNotice"></div>
+                    <button class="btn-primary download-btn" onclick="downloadReport()" id="downloadBtn" style="display: none;">
+                        📥 Download Validation Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mockOutputs = {
+            simplified: {
+                text: "Find the rate of change (derivative) for this function: f(x) = 3x² + 2x - 5. Then find what that rate equals when x = 2. Explain what this number means.",
+                similarity: 0.92,
+                difficulty: -15,
+                checks: {
+                    mathPreserved: true,
+                    answersPreserved: true,
+                    conceptIntact: true
+                }
+            },
+            audio: {
+                text: "Calculate the derivative of the function f of x equals three x squared plus two x minus five. Then evaluate the derivative at x equals two. Show your complete work and explain what your result means in practical terms.",
+                similarity: 0.95,
+                difficulty: -5,
+                checks: {
+                    mathPreserved: true,
+                    answersPreserved: true,
+                    conceptIntact: true
+                }
+            },
+            braille: {
+                text: "⠠⠉⠁⠇⠉⠥⠇⠁⠞⠑ ⠞⠓⠑ ⠙⠑⠗⠊⠧⠁⠞⠊⠧⠑ ⠕⠋ ⠋⠶⠭⠶ ⠶ ⠼⠉⠭⠔⠆ ⠖ ⠼⠆⠭ ⠤ ⠼⠑\n\nEnglish: Calculate the derivative of f(x) = 3x² + 2x - 5 and evaluate at x = 2.",
+                similarity: 0.98,
+                difficulty: 0,
+                checks: {
+                    mathPreserved: true,
+                    answersPreserved: true,
+                    conceptIntact: true
+                }
+            },
+            visual: {
+                hasDiagram: true,
+                text: "Given function: f(x) = 3x² + 2x - 5\n\nStep 1: Apply derivative rules\nStep 2: Evaluate at x = 2\nStep 3: Interpret the result\n\n[Visual diagram shows parabola with tangent line at x=2]",
+                altText: "Graph showing parabola of f(x)=3x²+2x-5 with a tangent line drawn at point x=2, illustrating the derivative as the slope of the tangent.",
+                similarity: 0.89,
+                difficulty: -8,
+                checks: {
+                    mathPreserved: true,
+                    answersPreserved: true,
+                    conceptIntact: true
+                }
+            }
+        };
+
+        let currentFormat = null;
+        let validationAttempts = 0;
+        let validationData = {};
+
+        let synth = window.speechSynthesis;
+let currentUtterance = null;
+
+function normalizeMathText(text) {
+    return text
+        .replace(/\(/g, ' open bracket ')
+        .replace(/\)/g, ' close bracket ')
+        .replace(/\+/g, ' plus ')
+        .replace(/\-/g, ' minus ')
+        .replace(/\*/g, ' multiplied by ')
+        .replace(/\//g, ' divided by ')
+        .replace(/=/g, ' equals ')
+        .replace(/>=/g, ' greater than or equal to ')
+        .replace(/<=/g, ' less than or equal to ')
+        .replace(/>/g, ' greater than ')
+        .replace(/</g, ' less than ')
+        .replace(/\^/g, ' to the power of ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function speakText(text) {
+    if (synth.speaking) {
+        synth.cancel();
+    }
+
+    const processedText = normalizeMathText(text);
+    currentUtterance = new SpeechSynthesisUtterance(processedText);
+
+    currentUtterance.rate = 0.9;
+    currentUtterance.pitch = 1.0;
+    currentUtterance.volume = 1.0;
+
+    synth.speak(currentUtterance);
+}
+
+
+        function generateFormat(format) {
+
+    // ---------------- VISUAL → BACKEND ----------------
+    if (format === "visual") {
+
+        const question = document.getElementById("questionInput").value;
+        if (!question.trim()) {
+            alert("Please enter a question first.");
+            return;
+        }
+
+        const outputCard = document.getElementById("outputVisual");
+        outputCard.querySelector(".output-content").innerHTML =
+            "<div class='loader'></div> Generating visual...";
+
+        fetch("http://127.0.0.1:5000/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                question: question,
+                mode: "visual"
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+    if (data.status === "success" && data.image) {
+        outputCard.querySelector(".output-content").innerHTML = `
+            <img src="${data.image}" style="max-width:100%; border-radius:8px;">
+        `;
+    } else {
+        outputCard.querySelector(".output-content").innerHTML =
+            "⚠ Visual could not be generated.";
+    }
+})
+
+        .catch(() => {
+            outputCard.querySelector(".output-content").innerHTML =
+                "❌ Backend not running.";
+        });
+
+        return; // ⛔ IMPORTANT — stops mock logic
+    }
+
+    // ---------------- MOCK OUTPUTS ----------------
+    currentFormat = format;
+
+    const outputCard = document.getElementById(`output${capitalize(format)}`);
+    const btn = document.getElementById(`btn${capitalize(format)}`);
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="loader"></span> Generating...`;
+
+    outputCard.classList.add('generating');
+    outputCard.querySelector('.output-content').innerHTML =
+        '<div class="loader"></div> AI generating format...';
+
+    setTimeout(() => {
+        displayOutput(format);
+        btn.disabled = false;
+        btn.innerHTML = getButtonText(format);
+        outputCard.classList.remove('generating');
+        runValidation(format);
+    }, 1500);
+}
+
+
+        function displayOutput(format) {
+            const data = mockOutputs[format];
+            const outputCard = document.getElementById(`output${capitalize(format)}`);
+            const content = outputCard.querySelector('.output-content');
+            content.classList.remove('empty');
+
+            if (format === 'audio') {
+    const questionText = document.getElementById('questionInput').value;
+
+    content.innerHTML = `
+        <p style="margin-bottom: 1rem;">${questionText}</p>
+        <button class="btn-primary" onclick="speakText(\`${questionText}\`)">
+            🔊 Play Audio
+        </button>
+    `;
+}
+
+            else if (format === 'visual') {
+                content.innerHTML = `
+                    <div class="placeholder-visual"> Interactive Diagram</div>
+                    <p class="alt-text"><strong>Alt text:</strong> ${data.altText}</p>
+                    <p style="margin-top: 1rem;">${data.text}</p>
+                `;
+            } else {
+                content.innerHTML = `<p>${data.text}</p>`;
+            }
+        }
+
+        function runValidation(format) {
+    const question = document.getElementById("questionInput").value;
+
+    if (!question.trim()) {
+        alert("Enter a question first.");
+        return;
+    }
+
+    document.getElementById("validationPanel").classList.remove("validation-hidden");
+
+    const statusBadge = document.getElementById("statusBadge");
+    statusBadge.textContent = "Validating...";
+    statusBadge.className = "status-badge regenerating";
+
+    fetch("http://127.0.0.1:5000/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: question })
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        document.getElementById("similarityScore").textContent =
+            data.metrics.semantic_score.toFixed(2);
+
+        document.getElementById("difficultyChange").textContent =
+            data.metrics.difficulty_change.toFixed(2);
+
+        document.getElementById("validationAttempts").textContent =
+            data.attempts;
+
+        document.getElementById("qaChecks").innerHTML = `
+            <div class="qa-check">
+                <div class="check-icon ${data.metrics.pass ? 'pass' : 'fail'}">
+                    ${data.metrics.pass ? '✓' : '✗'}
+                </div>
+                <div>Semantic & Difficulty Validation</div>
+            </div>
+        `;
+
+        if (data.validated) {
+            statusBadge.textContent = "✓ Validated Successfully";
+            statusBadge.className = "status-badge validated";
+        } else {
+            statusBadge.textContent = "⚠ Regenerated Output Used";
+            statusBadge.className = "status-badge flagged";
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Validation failed. Check backend.");
+    });
+}
+
+
+        function downloadReport() {
+            const report = {
+                title: "Adaptive Assessment Validation Report",
+                ...validationData,
+                metadata: {
+                    system: "AI Adaptive Multi-Format Assessment Generator",
+                    version: "1.0.0-demo",
+                    sdgAlignment: "SDG 4: Quality Education"
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `validation-report-${currentFormat}-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function getButtonText(format) {
+            const icons = {
+                simplified: '📝',
+                audio: '🔊',
+                braille: '⠃',
+                visual: '📊'
+            };
+            const labels = {
+                simplified: 'Simplified Text',
+                audio: 'Audio Format',
+                braille: 'Braille-Ready',
+                visual: 'Visual-Enhanced'
+            };
+            return `${icons[format]} ${labels[format]}`;
+        }
+    </script>
+</body>
+</html>
