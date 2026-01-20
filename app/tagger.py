@@ -1,36 +1,17 @@
-def apply_tags(classified_list: list) -> list:
-    """
-    Takes classified output and applies Braille-ready structure tags.
-    Returns a list of tagged lines.
-    """
+def tag_text(text: str) -> str:
+    lines = text.split("\n")
+    tagged_lines = []
 
-    tagged_output = []
-    q_count = 0
+    for line in lines:
+        line = line.strip()
 
-    for item in classified_list:
-        text = item["content"]
-        t = item["type"]
-
-        if t == "heading":
-            tagged_output.append(f"#H1: {text}")
-
-        elif t == "question":
-            q_count += 1
-            tagged_output.append(f"#Q{q_count}: {text}")
-
-        elif t == "option":
-            tagged_output.append(text)
-
-        elif t == "equation":
-            tagged_output.append(f"#EQ: {text}")
-
-        elif t == "table":
-            tagged_output.append(f"#TB: {text}")
-
-        elif t == "text":
-            tagged_output.append(f"#T: {text}")
-
+        if line.lower().startswith("q"):
+            tagged_lines.append(f"#Q {line}")
+        elif line.startswith("("):
+            tagged_lines.append(f"#OPT {line}")
+        elif "=" in line or "^" in line:
+            tagged_lines.append(f"#EQ {line}")
         else:
-            tagged_output.append(text)
+            tagged_lines.append(line)
 
-    return tagged_output
+    return "\n".join(tagged_lines)
