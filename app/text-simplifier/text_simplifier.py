@@ -1,259 +1,174 @@
 """
-Text Simplification Module with Equivalence Validation
-Maintains semantic similarity and difficulty alignment for assessment questions.
+Text Simplifier Module
+Converts complex assessment text to simplified versions with validation
+Now includes DEMO MODE for teammates without API keys
 """
-from huggingface_hub import InferenceClient
+
+import requests
+import time
+from typing import Optional
+from models import AssessmentItem, ConversionResult
 from semantic_checker import SemanticChecker
 from difficulty_scorer import DifficultyScorer
-from prompts import SimplificationPrompts
-from models import (
-    ConversionResult, 
-    ConversionStatus, 
-    FormatType, 
-    ValidationMetrics,
-    AssessmentItem
-)
-from config import config
-from typing import Optional
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from prompts import get_simplification_prompt
+import config
 
 class TextSimplifier:
-    """
-    Text simplification engine with validation and adaptive regeneration.
+    """Text simplification with equivalence validation"""
     
-    Validates:
-    - Semantic similarity > 0.85
-    - Difficulty change < 10%
-    - Math notation preservation
-    """
-    
-    def __init__(self, hf_token: Optional[str] = None):
-        """
-        Initialize the text simplifier.
-        
-        Args:
-            hf_token: Hugging Face API token (optional, reads from config if not provided)
-        """
-        # Use provided token or fall back to config
-        self.hf_token = hf_token or config.HF_TOKEN
-        if not self.hf_token:
-            raise ValueError("HF_TOKEN is required. Set it in .env file or pass to constructor.")
-        
-        # Initialize components
-        logger.info("Initializing Text Simplifier components...")
+    def __init__(self):
         self.semantic_checker = SemanticChecker()
         self.difficulty_scorer = DifficultyScorer()
-        self.prompts = SimplificationPrompts()
-        self.client = InferenceClient(token=self.hf_token)
+        self.headers = {
+            "Authorization": f"Bearer {config.HUGGINGFACE_API_KEY}"
+        } if config.HUGGINGFACE_API_KEY else {}
         
-        # Configuration from config file
-        self.semantic_threshold = config.SEMANTIC_THRESHOLD
-        self.difficulty_threshold = config.DIFFICULTY_THRESHOLD
-        self.max_attempts = config.MAX_ATTEMPTS
-        self.base_temperature = config.BASE_TEMPERATURE
-        self.temperature_increment = config.TEMPERATURE_INCREMENT
+        # Check if running in demo mode
+        self.demo_mode = not config.HUGGINGFACE_API_KEY
         
-        logger.info("✓ Text Simplifier initialized successfully!")
+        if self.demo_mode:
+            print("🎭 Running in DEMO MODE (no API key detected)")
+            print("   Using sample simplified outputs for testing")
+            print()
     
-    def convert(
-        self, 
-        item: AssessmentItem,
-        simplification_level: str = "moderate",
-        preserve_math: bool = True
-    ) -> ConversionResult:
-        """
-        Convert assessment item to simplified text format.
+    def _generate_demo_output(self, text: str) -> str:
+        """Generate demo simplified text when API key is not available"""
         
-        This is the STANDARDIZED interface used by the orchestrator.
+        # Simple rule-based simplification for demo
+        simplified = text
         
-        Args:
-            item: AssessmentItem object containing the question
-            simplification_level: "minimal", "moderate", or "significant"
-            preserve_math: Whether to keep math notation intact
+        # Replace complex words with simpler ones
+        replacements = {
+            "evaluate": "find",
+            "definite integral": "area under the curve",
+            "determine": "find",
+            "analyze": "look at",
+            "relationship between": "connection between",
+            "photosynthesis": "how plants make food",
+            "cellular respiration": "how cells use energy",
+            "perimeter": "distance around",
+            "rectangular": "rectangle-shaped",
+            "dimensions": "measurements"
+        }
+        
+        for complex_word, simple_word in replacements.items():
+            simplified = simplified.replace(complex_word, simple_word)
+        
+        return simplified
+    
+    def _call_llm_api(self, prompt: str) -> Optional[str]:
+        """Call Hugging Face API or return demo output"""
+        
+        if self.demo_mode:
+            # Extract original text from prompt (simple extraction)
+            # In demo mode, just do basic simplification
+            return None  # Will trigger demo output in convert()
+        
+        try:
+            payload = {
+                "inputs": prompt,
+                "parameters": config.GENERATION_CONFIG
+            }
             
-        Returns:
-            ConversionResult with standardized format
-        """
-        logger.info(f"\n{'='*80}")
-        logger.info(f"SIMPLIFYING ITEM: {item.id}")
-        logger.info(f"TEXT: {item.text[:60]}...")
-        logger.info(f"{'='*80}\n")
-        
-        # Run simplification with validation
-        result = self._simplify_with_validation(
-            item.text, 
-            simplification_level, 
-            preserve_math
-        )
-        
-        # Convert to standardized ConversionResult
-        return self._to_conversion_result(item, result)
-    
-    def simplify(
-        self, 
-        original_text: str, 
-        simplification_level: str = "moderate", 
-        preserve_math: bool = True
-    ) -> dict:
-        """
-        Legacy interface - kept for backward compatibility.
-        Use convert() method for new integrations.
-        
-        Returns:
-            dict with keys: success, simplified_text, semantic_score, 
-                          difficulty_change, attempt, flagged
-        """
-        return self._simplify_with_validation(original_text, simplification_level, preserve_math)
-    
-    def _simplify_with_validation(
-        self,
-        original_text: str,
-        simplification_level: str,
-        preserve_math: bool
-    ) -> dict:
-        """
-        Internal method: Simplify text with validation and adaptive regeneration.
-        """
-        # Calculate original difficulty
-        original_difficulty = self.difficulty_scorer.calculate_difficulty(original_text)
-        orig_score = original_difficulty["composite_difficulty"]
-        
-        best_result = None
-        best_overall_score = 0
-        
-        for attempt in range(1, self.max_attempts + 1):
-            logger.info(f"🔄 Attempt {attempt}/{self.max_attempts}")
-            
-            # Generate simplified version
-            simplified = self._call_llm(
-                original_text, 
-                simplification_level, 
-                preserve_math, 
-                attempt
+            response = requests.post(
+                config.API_URL,
+                headers=self.headers,
+                json=payload,
+                timeout=config.API_TIMEOUT
             )
             
-            if not simplified:
-                logger.warning("  ✗ Generation failed")
-                continue
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    generated_text = result[0].get('generated_text', '')
+                    # Extract only the simplified version
+                    if "Simplified version:" in generated_text:
+                        simplified = generated_text.split("Simplified version:")[-1].strip()
+                        return simplified
+                    return generated_text
+            else:
+                print(f"⚠️  API Error {response.status_code}: {response.text}")
+                return None
+                
+        except Exception as e:
+            print(f"⚠️  API call failed: {str(e)}")
+            return None
+    
+    def convert(self, item: AssessmentItem) -> ConversionResult:
+        """
+        Convert assessment item to simplified text with validation
+        Works in both FULL mode (with API key) and DEMO mode (without API key)
+        """
+        
+        original_text = item.text
+        original_difficulty = self.difficulty_scorer.calculate_difficulty(original_text)
+        
+        for attempt in range(1, config.MAX_REGENERATION_ATTEMPTS + 1):
+            
+            # Generate simplified text
+            if self.demo_mode:
+                simplified_text = self._generate_demo_output(original_text)
+                time.sleep(0.5)  # Simulate API delay
+            else:
+                prompt = get_simplification_prompt(original_text)
+                simplified_text = self._call_llm_api(prompt)
+                
+                if not simplified_text:
+                    # Fallback to demo mode if API fails
+                    print(f"   Attempt {attempt}: API failed, using demo output")
+                    simplified_text = self._generate_demo_output(original_text)
             
             # Validate semantic similarity
             semantic_score = self.semantic_checker.check_similarity(
                 original_text, 
-                simplified
-            )
-            semantic_pass = semantic_score >= self.semantic_threshold
-            
-            # Validate difficulty alignment
-            simp_difficulty = self.difficulty_scorer.calculate_difficulty(simplified)
-            simp_score = simp_difficulty["composite_difficulty"]
-            
-            if orig_score > 0:
-                difficulty_change = abs(simp_score - orig_score) / orig_score * 100
-            else:
-                difficulty_change = 0
-                
-            difficulty_pass = difficulty_change <= self.difficulty_threshold
-            
-            # Calculate overall quality score
-            overall_score = (
-                (semantic_score * 0.7) + 
-                ((100 - min(difficulty_change, 100)) / 100 * 0.3)
+                simplified_text
             )
             
-            logger.info(f"  📊 Semantic: {semantic_score:.3f} {'✓' if semantic_pass else '✗'}")
-            logger.info(f"  📊 Difficulty: {difficulty_change:.1f}% change {'✓' if difficulty_pass else '✗'}")
+            # Calculate difficulty
+            simplified_difficulty = self.difficulty_scorer.calculate_difficulty(simplified_text)
+            difficulty_change = ((simplified_difficulty - original_difficulty) / original_difficulty) * 100
             
-            # Track best result
-            if overall_score > best_overall_score:
-                best_overall_score = overall_score
-                best_result = {
-                    "simplified_text": simplified,
-                    "semantic_score": semantic_score,
-                    "semantic_pass": semantic_pass,
-                    "difficulty_change": difficulty_change,
-                    "difficulty_pass": difficulty_pass,
-                    "attempt": attempt,
-                }
+            # Check if validation passes
+            semantic_pass = semantic_score >= config.SEMANTIC_SIMILARITY_THRESHOLD
+            difficulty_pass = abs(difficulty_change) <= config.MAX_DIFFICULTY_CHANGE_PERCENT
             
-            # Check if all validations passed
             if semantic_pass and difficulty_pass:
-                logger.info(f"  ✅ All checks passed!\n")
-                best_result["success"] = True
-                best_result["flagged"] = False
-                return best_result
+                return ConversionResult(
+                    id=item.id,
+                    original_text=original_text,
+                    simplified_text=simplified_text,
+                    semantic_score=semantic_score,
+                    difficulty_change=difficulty_change,
+                    status="success",
+                    attempts=attempt,
+                    issues=[]
+                )
             
-            logger.info(f"  ⚠️ Validation failed, trying again...\n")
+            # If not last attempt, continue loop
+            if attempt < config.MAX_REGENERATION_ATTEMPTS:
+                issues = []
+                if not semantic_pass:
+                    issues.append(f"Semantic score {semantic_score:.3f} < {config.SEMANTIC_SIMILARITY_THRESHOLD}")
+                if not difficulty_pass:
+                    issues.append(f"Difficulty change {abs(difficulty_change):.1f}% > {config.MAX_DIFFICULTY_CHANGE_PERCENT}%")
+                
+                print(f"   Attempt {attempt} failed: {', '.join(issues)}")
+                print(f"   Retrying...")
         
-        # Max attempts reached
-        logger.warning(f"⚠️ Max attempts reached. Flagged for review\n")
-        best_result["success"] = False
-        best_result["flagged"] = True
-        return best_result
-    
-    def _call_llm(
-        self, 
-        original: str, 
-        level: str, 
-        preserve_math: bool, 
-        attempt: int
-    ) -> Optional[str]:
-        """
-        Call Hugging Face LLM API with adaptive temperature.
+        # All attempts exhausted
+        final_issues = []
+        if semantic_score < config.SEMANTIC_SIMILARITY_THRESHOLD:
+            final_issues.append(f"Low semantic similarity: {semantic_score:.3f}")
+        if abs(difficulty_change) > config.MAX_DIFFICULTY_CHANGE_PERCENT:
+            final_issues.append(f"Difficulty change too high: {abs(difficulty_change):.1f}%")
         
-        Temperature increases with each attempt to generate more diverse outputs.
-        """
-        temperature = self.base_temperature + (attempt - 1) * self.temperature_increment
-        prompt = self.prompts.get_simplification_prompt(original, level, preserve_math)
-        
-        messages = [{"role": "user", "content": prompt}]
-        
-        try:
-            response = self.client.chat_completion(
-                messages=messages,
-                model=config.LLM_MODEL,
-                max_tokens=config.MAX_TOKENS,
-                temperature=temperature
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error(f"  ✗ LLM API Error: {e}")
-            return None
-    
-    def _to_conversion_result(
-        self, 
-        item: AssessmentItem, 
-        result: dict
-    ) -> ConversionResult:
-        """
-        Convert internal result dict to standardized ConversionResult.
-        """
-        # Determine status
-        if result["success"]:
-            status = ConversionStatus.VALIDATED
-        elif result["flagged"]:
-            status = ConversionStatus.FLAGGED
-        else:
-            status = ConversionStatus.FAILED
-        
-        # Create validation metrics
-        metrics = ValidationMetrics(
-            semantic_similarity=result["semantic_score"],
-            difficulty_change=result["difficulty_change"],
-            semantic_pass=result["semantic_pass"],
-            difficulty_pass=result["difficulty_pass"]
-        )
-        
-        # Create conversion result
         return ConversionResult(
-            status=status,
-            format_type=FormatType.SIMPLIFIED_TEXT,
-            original_text=item.text,
-            converted_content=result["simplified_text"],
-            metrics=metrics,
-            iterations_taken=result["attempt"],
-            warnings=[] if result["success"] else ["Failed validation checks"]
+            id=item.id,
+            original_text=original_text,
+            simplified_text=simplified_text,
+            semantic_score=semantic_score,
+            difficulty_change=difficulty_change,
+            status="failed",
+            attempts=config.MAX_REGENERATION_ATTEMPTS,
+            issues=final_issues
         )
