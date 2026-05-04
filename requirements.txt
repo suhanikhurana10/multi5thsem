@@ -1,2 +1,9 @@
-fastapi
-uvicorn
+flask
+spacy
+matplotlib
+numpy
+sentence-transformers
+textstat
+sympy
+huggingface-hub
+python-dotenv

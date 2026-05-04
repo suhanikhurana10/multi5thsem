@@ -1,13 +1,24 @@
-from sentence_transformers import SentenceTransformer, util
-import textstat
-import spacy
+try:
+    from sentence_transformers import SentenceTransformer, util
+    import textstat
+    import spacy
 
-# Load models once
-model = SentenceTransformer("all-MiniLM-L6-v2")
-nlp = spacy.load("en_core_web_sm")
+    print("Loading SentenceTransformer...")
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    print("Loading Spacy...")
+    nlp = spacy.load("en_core_web_sm")
+    AVAILABLE = True
+except Exception as e:
+
+    print(f"Warning: ML dependencies missing ({e}). Using mock mode.")
+    AVAILABLE = False
+    model = None
+    nlp = None
+    util = None
+
 
 SIMILARITY_THRESHOLD = 0.85
-MAX_DIFFICULTY_CHANGE = 10
+MAX_DIFFICULTY_CHANGE = 40
 MIN_CONCEPT_OVERLAP = 0.6
 
 
@@ -17,6 +28,8 @@ def semantic_similarity(text1, text2):
     if not text1 or not text2:
         return 0.0
 
+
+
     emb1 = model.encode(text1, convert_to_tensor=True)
     emb2 = model.encode(text2, convert_to_tensor=True)
     score = float(util.cos_sim(emb1, emb2))
@@ -24,14 +37,18 @@ def semantic_similarity(text1, text2):
 
 
 def difficulty_score(text):
+
     try:
         return textstat.flesch_reading_ease(text)
+
     except:
         return 0
 
 
 def concept_overlap(text1, text2):
     doc1 = nlp(text1)
+
+
     doc2 = nlp(text2)
 
     key1 = {t.lemma_ for t in doc1 if t.pos_ in ["NOUN", "VERB"]}

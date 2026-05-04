@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -204,7 +205,40 @@
             line-height: 1.6;
             color: var(--gray-700);
             min-height: 100px;
+            /* ---------------- FIXES ---------------- */
+            overflow-x: auto;
+            /* Scroll horizontal if text is too wide */
+            overflow-y: auto;
+            /* Scroll vertical if text is too long */
+            max-height: 400px;
+            /* Prevent infinite height */
+            word-wrap: break-word;
+            /* Prevent text overflow */
+            overflow-wrap: anywhere;
+            /* Break giant strings like Braille */
+            display: flex;
+            /* Center content if needed */
+            flex-direction: column;
+            align-items: center;
+            /* Center images */
         }
+
+        .output-content img {
+            max-width: 100%;
+            /* Force image to fit width */
+            height: auto;
+            /* Maintain aspect ratio */
+            display: block;
+            border-radius: 4px;
+        }
+
+        /* Ensure text (like simplified/braille) aligns left though */
+        .output-content p,
+        .output-content div {
+            width: 100%;
+            text-align: left;
+        }
+
 
         .output-content.empty {
             color: var(--gray-400);
@@ -225,7 +259,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .validation-panel {
@@ -404,6 +440,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -417,10 +454,8 @@
                 <div class="section-title">Input Assessment Question</div>
                 <div class="input-group">
                     <label for="questionInput">Enter your standard assessment question:</label>
-                    <textarea 
-                        id="questionInput" 
-                        placeholder="Example: Calculate the derivative of f(x) = 3x² + 2x - 5 and evaluate it at x = 2. Show all work and explain the significance of the result."
-                    ></textarea>
+                    <textarea id="questionInput"
+                        placeholder="Example: Calculate the derivative of f(x) = 3x² + 2x - 5 and evaluate it at x = 2. Show all work and explain the significance of the result."></textarea>
                 </div>
                 <!--<div class="info-box">
                     <strong>Demo Note:</strong> This is a frontend simulation. The system demonstrates the workflow of AI-powered adaptive format generation with validation, but does not perform real ML inference.
@@ -443,7 +478,7 @@
                         Visual-Enhanced
                     </button>
                     <button class="btn-primary" onclick="runEquivalenceCheck()">
-                         Validate & Regenerate
+                        Validate & Regenerate
                     </button>
 
                 </div>
@@ -493,7 +528,8 @@
                 <div class="status-section">
                     <div class="status-badge" id="statusBadge">Validating...</div>
                     <div id="regenerationNotice"></div>
-                    <button class="btn-primary download-btn" onclick="downloadReport()" id="downloadBtn" style="display: none;">
+                    <button class="btn-primary download-btn" onclick="downloadReport()" id="downloadBtn"
+                        style="display: none;">
                         📥 Download Validation Report
                     </button>
                 </div>
@@ -552,145 +588,216 @@
         let validationData = {};
 
         let synth = window.speechSynthesis;
-let currentUtterance = null;
+        let currentUtterance = null;
 
-function normalizeMathText(text) {
-    return text
-        .replace(/\(/g, ' open bracket ')
-        .replace(/\)/g, ' close bracket ')
-        .replace(/\+/g, ' plus ')
-        .replace(/\-/g, ' minus ')
-        .replace(/\*/g, ' multiplied by ')
-        .replace(/\//g, ' divided by ')
-        .replace(/=/g, ' equals ')
-        .replace(/>=/g, ' greater than or equal to ')
-        .replace(/<=/g, ' less than or equal to ')
-        .replace(/>/g, ' greater than ')
-        .replace(/</g, ' less than ')
-        .replace(/\^/g, ' to the power of ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
+        function normalizeMathText(text) {
+            return text
+                .replace(/\(/g, ' open bracket ')
+                .replace(/\)/g, ' close bracket ')
+                .replace(/\+/g, ' plus ')
+                .replace(/\-/g, ' minus ')
+                .replace(/\*/g, ' multiplied by ')
+                .replace(/\//g, ' divided by ')
+                .replace(/=/g, ' equals ')
+                .replace(/>=/g, ' greater than or equal to ')
+                .replace(/<=/g, ' less than or equal to ')
+                .replace(/>/g, ' greater than ')
+                .replace(/</g, ' less than ')
+                .replace(/\^/g, ' to the power of ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
 
-function speakText(text) {
-    if (synth.speaking) {
-        synth.cancel();
-    }
+        function speakText(text) {
+            if (synth.speaking) {
+                synth.cancel();
+            }
 
-    const processedText = normalizeMathText(text);
-    currentUtterance = new SpeechSynthesisUtterance(processedText);
+            const processedText = normalizeMathText(text);
+            currentUtterance = new SpeechSynthesisUtterance(processedText);
 
-    currentUtterance.rate = 0.9;
-    currentUtterance.pitch = 1.0;
-    currentUtterance.volume = 1.0;
+            currentUtterance.rate = 0.9;
+            currentUtterance.pitch = 1.0;
+            currentUtterance.volume = 1.0;
 
-    synth.speak(currentUtterance);
-}
+            synth.speak(currentUtterance);
+        }
 
+
+        // DYNAMIC API BASE: Use absolute if file://, relative if http://
+        const API_BASE = window.location.protocol.startsWith('http') ? "" : "http://127.0.0.1:5000";
 
         function generateFormat(format) {
 
-    // ---------------- VISUAL → BACKEND ----------------
-    if (format === "visual") {
 
-        const question = document.getElementById("questionInput").value;
-        if (!question.trim()) {
-            alert("Please enter a question first.");
-            return;
+            // ---------------- VISUAL → BACKEND ----------------
+            if (format === "visual") {
+
+                const question = document.getElementById("questionInput").value;
+                if (!question.trim()) {
+                    alert("Please enter a question first.");
+                    return;
+                }
+
+                const outputCard = document.getElementById("outputVisual");
+                outputCard.querySelector(".output-content").innerHTML =
+                    "<div class='loader'></div> Generating visual...";
+
+                fetch(`${API_BASE}/generate`, {
+
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        question: question,
+                        mode: "visual"
+                    })
+                })
+
+                    .then(res => res.json())
+                    .then(data => {
+                        const imgPath = data.image ? `${API_BASE}${data.image}` : "";
+                        if (data.status === "success" && imgPath) {
+                            outputCard.querySelector(".output-content").innerHTML = `<img src="${imgPath}" alt="Visual">`;
+                        } else {
+                            outputCard.querySelector(".output-content").innerHTML =
+                                "❌ Visual could not be generated.";
+                        }
+                    })
+
+                    .catch(() => {
+                        outputCard.querySelector(".output-content").innerHTML =
+                            "❌ Backend not running (Check http://127.0.0.1:5000).";
+                    })
+                    .finally(() => {
+                        isProcessing = false;
+                    });
+
+                return;
+            }
+
+
+            // ---------------- SIMPLIFIED → BACKEND ----------------
+            if (format === "simplified") {
+
+                const question = document.getElementById("questionInput").value;
+                if (!question.trim()) {
+                    alert("Please enter a question first.");
+                    isProcessing = false; // Reset flag on early exit
+                    return;
+                }
+
+                const outputCard = document.getElementById("outputSimplified");
+                outputCard.querySelector(".output-content").innerHTML =
+                    "<div class='loader'></div> Simplifying text...";
+
+                fetch(`${API_BASE}/simplify`, {
+
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: question })
+                })
+
+
+                    .then(res => res.json())
+                    .then(data => {
+                        outputCard.querySelector(".output-content").innerHTML =
+                            `<p>${data.simplified}</p>`;
+
+                        // OPTIONAL: show metrics
+                        document.getElementById("similarityScore").textContent =
+                            data.semantic_score.toFixed(2);
+
+                        document.getElementById("difficultyChange").textContent =
+                            data.difficulty_score.toFixed(2);
+
+                        // ---------------- NEW: UPDATE VALIDATION UI ----------------
+                        const valContainer = document.querySelector(".validation-dashboard");
+                        if (valContainer) valContainer.style.display = "block"; // Check if element exists
+
+                        const statusBanner = document.getElementById("validationStatus");
+                        if (statusBanner) { // Check if element exists
+                            if (data.is_validated) {
+                                statusBanner.className = "status-banner status-success";
+                                statusBanner.innerHTML = "✅ Semantic & Difficulty Validation Passed";
+                            } else {
+                                statusBanner.className = "status-banner status-failure";
+                                statusBanner.innerHTML = "❌ Validation Failed (Needs Review)";
+                            }
+                        }
+
+
+                        const attemptsCount = document.getElementById("attemptsCount");
+                        if (attemptsCount) attemptsCount.textContent = data.metrics.attempts || 1; // Check if element exists
+                    })
+
+                    .catch(() => {
+                        outputCard.querySelector(".output-content").innerHTML =
+                            "❌ Backend not running.";
+                    })
+                    .finally(() => {
+                        isProcessing = false;
+                    });
+
+                return; // ⛔ stops mock logic
+            }
+
+            if (format === "braille") {
+                const question = document.getElementById("questionInput").value;
+                if (!question.trim()) {
+                    alert("Please enter a question first.");
+                    isProcessing = false; // Reset flag on early exit
+                    return;
+                }
+
+                const outputCard = document.getElementById("outputBraille");
+                outputCard.querySelector(".output-content").innerHTML = "<div class='loader'></div> Converting to Braille...";
+
+                fetch(`${API_BASE}/braille`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: question })
+                })
+
+
+                    .then(res => res.json())
+                    .then(data => {
+                        outputCard.querySelector(".output-content").innerHTML =
+                            `<p style='font-size: 1.5rem; line-height: 1.6; overflow-wrap: anywhere; word-break: break-word;'>${data.braille}</p>` +
+                            `<p style='margin-top:1rem; border-top: 1px solid #eee; padding-top: 0.5rem; color:#666; font-size:0.8rem;'>Original: ${data.original}</p>`;
+                    })
+
+                    .catch(() => {
+                        outputCard.querySelector(".output-content").innerHTML = "❌ Backend error.";
+                    })
+                    .finally(() => {
+                        isProcessing = false;
+                    });
+                return;
+            }
+
+
+
+            // ---------------- MOCK OUTPUTS ----------------
+            currentFormat = format;
+
+            const outputCard = document.getElementById(`output${capitalize(format)}`);
+            const btn = document.getElementById(`btn${capitalize(format)}`);
+
+            btn.disabled = true;
+            btn.innerHTML = `<span class="loader"></span> Generating...`;
+
+            outputCard.classList.add('generating');
+            outputCard.querySelector('.output-content').innerHTML =
+                '<div class="loader"></div> AI generating format...';
+
+            setTimeout(() => {
+                displayOutput(format);
+                btn.disabled = false;
+                btn.innerHTML = getButtonText(format);
+                outputCard.classList.remove('generating');
+                runValidation(format);
+                isProcessing = false; // Reset flag after mock generation
+            }, 1500);
         }
-
-        const outputCard = document.getElementById("outputVisual");
-        outputCard.querySelector(".output-content").innerHTML =
-            "<div class='loader'></div> Generating visual...";
-
-        fetch("http://127.0.0.1:5000/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                question: question,
-                mode: "visual"
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-    if (data.status === "success" && data.image) {
-        outputCard.querySelector(".output-content").innerHTML = `
-            <img src="${data.image}" style="max-width:100%; border-radius:8px;">
-        `;
-    } else {
-        outputCard.querySelector(".output-content").innerHTML =
-            "⚠ Visual could not be generated.";
-    }
-})
-
-        .catch(() => {
-            outputCard.querySelector(".output-content").innerHTML =
-                "❌ Backend not running.";
-        });
-
-        return; // ⛔ IMPORTANT — stops mock logic
-    }
-
-    // ---------------- SIMPLIFIED → BACKEND ----------------
-if (format === "simplified") {
-
-    const question = document.getElementById("questionInput").value;
-    if (!question.trim()) {
-        alert("Please enter a question first.");
-        return;
-    }
-
-    const outputCard = document.getElementById("outputSimplified");
-    outputCard.querySelector(".output-content").innerHTML =
-        "<div class='loader'></div> Simplifying text...";
-
-    fetch("http://127.0.0.1:5000/simplify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: question })
-    })
-    .then(res => res.json())
-    .then(data => {
-        outputCard.querySelector(".output-content").innerHTML =
-            `<p>${data.simplified}</p>`;
-
-        // OPTIONAL: show metrics
-        document.getElementById("similarityScore").textContent =
-            data.semantic_score.toFixed(2);
-
-        document.getElementById("difficultyChange").textContent =
-            data.difficulty_score.toFixed(2);
-    })
-    .catch(() => {
-        outputCard.querySelector(".output-content").innerHTML =
-            "❌ Backend not running.";
-    });
-
-    return; // ⛔ stops mock logic
-}
-
-
-    // ---------------- MOCK OUTPUTS ----------------
-    currentFormat = format;
-
-    const outputCard = document.getElementById(`output${capitalize(format)}`);
-    const btn = document.getElementById(`btn${capitalize(format)}`);
-
-    btn.disabled = true;
-    btn.innerHTML = `<span class="loader"></span> Generating...`;
-
-    outputCard.classList.add('generating');
-    outputCard.querySelector('.output-content').innerHTML =
-        '<div class="loader"></div> AI generating format...';
-
-    setTimeout(() => {
-        displayOutput(format);
-        btn.disabled = false;
-        btn.innerHTML = getButtonText(format);
-        outputCard.classList.remove('generating');
-        runValidation(format);
-    }, 1500);
-}
 
 
         function displayOutput(format) {
@@ -700,15 +807,15 @@ if (format === "simplified") {
             content.classList.remove('empty');
 
             if (format === 'audio') {
-    const questionText = document.getElementById('questionInput').value;
+                const questionText = document.getElementById('questionInput').value;
 
-    content.innerHTML = `
+                content.innerHTML = `
         <p style="margin-bottom: 1rem;">${questionText}</p>
         <button class="btn-primary" onclick="speakText(\`${questionText}\`)">
             🔊 Play Audio
         </button>
     `;
-}
+            }
 
             else if (format === 'visual') {
                 content.innerHTML = `
@@ -722,37 +829,39 @@ if (format === "simplified") {
         }
 
         function runValidation(format) {
-    const question = document.getElementById("questionInput").value;
+            const question = document.getElementById("questionInput").value;
 
-    if (!question.trim()) {
-        alert("Enter a question first.");
-        return;
-    }
+            if (!question.trim()) {
+                alert("Enter a question first.");
+                return;
+            }
 
-    document.getElementById("validationPanel").classList.remove("validation-hidden");
+            document.getElementById("validationPanel").classList.remove("validation-hidden");
 
-    const statusBadge = document.getElementById("statusBadge");
-    statusBadge.textContent = "Validating...";
-    statusBadge.className = "status-badge regenerating";
+            const statusBadge = document.getElementById("statusBadge");
+            statusBadge.textContent = "Validating...";
+            statusBadge.className = "status-badge regenerating";
 
-    fetch("http://127.0.0.1:5000/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: question })
-    })
-    .then(res => res.json())
-    .then(data => {
+            fetch(`${API_BASE}/validate`, {
 
-        document.getElementById("similarityScore").textContent =
-            data.metrics.semantic_score.toFixed(2);
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
 
-        document.getElementById("difficultyChange").textContent =
-            data.metrics.difficulty_change.toFixed(2);
+                body: JSON.stringify({ text: question })
+            })
+                .then(res => res.json())
+                .then(data => {
 
-        document.getElementById("validationAttempts").textContent =
-            data.attempts;
+                    document.getElementById("similarityScore").textContent =
+                        data.metrics.semantic_score.toFixed(2);
 
-        document.getElementById("qaChecks").innerHTML = `
+                    document.getElementById("difficultyChange").textContent =
+                        data.metrics.difficulty_change.toFixed(2);
+
+                    document.getElementById("validationAttempts").textContent =
+                        data.attempts;
+
+                    document.getElementById("qaChecks").innerHTML = `
             <div class="qa-check">
                 <div class="check-icon ${data.metrics.pass ? 'pass' : 'fail'}">
                     ${data.metrics.pass ? '✓' : '✗'}
@@ -761,19 +870,19 @@ if (format === "simplified") {
             </div>
         `;
 
-        if (data.validated) {
-            statusBadge.textContent = "✓ Validated Successfully";
-            statusBadge.className = "status-badge validated";
-        } else {
-            statusBadge.textContent = "⚠ Regenerated Output Used";
-            statusBadge.className = "status-badge flagged";
+                    if (data.validated) {
+                        statusBadge.textContent = "✓ Validated Successfully";
+                        statusBadge.className = "status-badge validated";
+                    } else {
+                        statusBadge.textContent = "⚠ Regenerated Output Used";
+                        statusBadge.className = "status-badge flagged";
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Validation failed. Check backend.");
+                });
         }
-    })
-    .catch(err => {
-        console.error(err);
-        alert("Validation failed. Check backend.");
-    });
-}
 
 
         function downloadReport() {
@@ -819,4 +928,5 @@ if (format === "simplified") {
         }
     </script>
 </body>
+
 </html>

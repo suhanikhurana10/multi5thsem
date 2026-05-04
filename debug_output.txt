@@ -1,0 +1,33 @@
+Initializing Simplifier...
+Loading Sentence-BERT model: all-MiniLM-L6-v2...
+Subject: Semantic checker ready
+Loading spaCy model for difficulty analysis...
+Subject: Difficulty scorer ready
+
+Processing: 'calculate the area of the circle with radius = 6cm'
+
+================================================================================
+TEXT SIMPLIFIER - Internal Validation Mode
+================================================================================
+
+Input: calculate the area of the circle with radius = 6cm...
+Original Difficulty Score: 34.55
+
+[Attempt] Internal Attempt 1/3
+  [Error] Generation error: Model meta-llama/Llama-3.2-3B-Instruct is not supported for task text-generation and provider hyperbolic. Supported task: conversational.
+  [Failed] Generation failed
+
+[Attempt] Internal Attempt 2/3
+  [Error] Generation error: Model meta-llama/Llama-3.2-3B-Instruct is not supported for task text-generation and provider hyperbolic. Supported task: conversational.
+  [Failed] Generation failed
+
+[Attempt] Internal Attempt 3/3
+  [Error] Generation error: Model meta-llama/Llama-3.2-3B-Instruct is not supported for task text-generation and provider hyperbolic. Supported task: conversational.
+  [Failed] Generation failed
+
+[Failed] INTERNAL VALIDATION after 3 attempts
+
+FINAL RESULT:
+Simplified: calculate the area of the circle with radius = 6cm
+Full Result Keys: ['simplified_text', 'passed_internal_validation', 'semantic_score', 'difficulty_change', 'semantic_passed', 'difficulty_passed', 'attempt', 'needs_regeneration']
+Passed: False

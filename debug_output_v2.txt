@@ -1,0 +1,35 @@
+Initializing Simplifier...
+Loading Sentence-BERT model: all-MiniLM-L6-v2...
+Subject: Semantic checker ready
+Loading spaCy model for difficulty analysis...
+Subject: Difficulty scorer ready
+
+Processing: 'calculate the area of the circle with radius = 6cm'
+
+================================================================================
+TEXT SIMPLIFIER - Internal Validation Mode
+================================================================================
+
+Input: calculate the area of the circle with radius = 6cm...
+Original Difficulty Score: 34.55
+
+[Attempt] Internal Attempt 1/3
+  [Metric] Semantic: 0.969 [OK]
+  [Metric] Difficulty: 17.8% change [FAIL] (max: 10%)
+
+[Attempt] Internal Attempt 2/3
+  [Metric] Semantic: 0.930 [OK]
+  [Metric] Difficulty: 41.4% change [FAIL] (max: 10%)
+
+[Attempt] Internal Attempt 3/3
+  [Metric] Semantic: 0.930 [OK]
+  [Metric] Difficulty: 41.4% change [FAIL] (max: 10%)
+
+[Failed] INTERNAL VALIDATION after 3 attempts
+   Best semantic: 0.969
+   Best difficulty change: 17.8%
+
+FINAL RESULT:
+Simplified: Calculate the area of a circle with a radius of 6 cm.
+Full Result Keys: ['simplified_text', 'passed_internal_validation', 'semantic_score', 'difficulty_change', 'semantic_passed', 'difficulty_passed', 'attempt', 'needs_regeneration']
+Passed: False

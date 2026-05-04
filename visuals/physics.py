@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 # ---------- Force Diagram ----------
 def draw_force_diagram(force_value=10, direction="up", output_path="force.png"):
@@ -75,6 +76,62 @@ def draw_motion_vector(direction="right", output_path="motion.png"):
     plt.title("Motion Vector")
     plt.axis('off')
 
+    plt.savefig(output_path)
+    plt.close()
+    return output_path
+
+# ---------- Projectile Motion ----------
+def draw_projectile_motion(angle=45, velocity=20, output_path="projectile.png"):
+    plt.figure(figsize=(6,4))
+    
+    g = 9.8
+    theta = np.radians(angle)
+    t_flight = 2 * velocity * np.sin(theta) / g
+    t = np.linspace(0, t_flight, 100)
+    
+    x = velocity * np.cos(theta) * t
+    y = velocity * np.sin(theta) * t - 0.5 * g * t**2
+    
+    plt.plot(x, y, label="Trajectory")
+    plt.title(f"Projectile Motion (v={velocity}m/s, angle={angle}°)")
+    plt.xlabel("Distance (m)")
+    plt.ylabel("Height (m)")
+    plt.axhline(0, color='black')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.savefig(output_path)
+    plt.close()
+    return output_path
+
+# ---------- Simple Circuit ----------
+def draw_circuit(components=None, output_path="circuit.png"):
+    # Mock simple circuit diagram
+    plt.figure(figsize=(6,4))
+    ax = plt.gca()
+    
+    # Draw wire rectangle
+    rect = plt.Rectangle((1, 1), 4, 3, fill=False, edgecolor='black', linewidth=2)
+    ax.add_patch(rect)
+    
+    # Battery symbol (left side)
+    plt.plot([1, 1], [2.2, 2.8], color='white', linewidth=5) # eraser
+    plt.plot([0.8, 1.2], [2.6, 2.6], color='black', linewidth=2) # long plate
+    plt.plot([0.9, 1.1], [2.4, 2.4], color='black', linewidth=2) # short plate
+    plt.text(0.5, 2.5, "V", fontsize=12)
+
+    # Resistor symbol (top side)
+    plt.plot([2.5, 3.5], [4, 4], color='white', linewidth=5) # eraser
+    x_zag = [2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5]
+    y_zag = [4, 4.2, 3.8, 4.2, 3.8, 4.2, 3.8, 4.2, 3.8, 4.2, 4]
+    plt.plot(x_zag, y_zag, color='black', linewidth=1.5)
+    plt.text(2.9, 4.5, "R", fontsize=12)
+    
+    plt.xlim(0, 6)
+    plt.ylim(0, 5)
+    plt.axis('off')
+    plt.title("Simple Circuit Diagram")
+    
     plt.savefig(output_path)
     plt.close()
     return output_path

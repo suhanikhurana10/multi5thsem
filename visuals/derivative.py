@@ -1,8 +1,18 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') # Non-interactive backend
 import matplotlib.pyplot as plt
-import sympy as sp
+try:
+    import sympy as sp
+except ImportError:
+    sp = None
+
 
 def draw_derivative(function_str, output_path="derivative.png"):
+    if sp is None:
+        print("Sympy not installed, skipping derivative")
+        return None
+
     """
     Draws a function and its derivative.
     Example input: "2*x**2 + 5"
@@ -25,6 +35,13 @@ def draw_derivative(function_str, output_path="derivative.png"):
         x_vals = np.linspace(-10, 10, 400)
         y_vals = f(x_vals)
         dy_vals = df(x_vals)
+
+        # Fix: If function returns scalar (e.g. for constant derivative), broadcast to array
+        if np.isscalar(y_vals):
+            y_vals = np.full_like(x_vals, y_vals)
+        if np.isscalar(dy_vals):
+            dy_vals = np.full_like(x_vals, dy_vals)
+
 
         # Plot
         plt.figure(figsize=(7,5))

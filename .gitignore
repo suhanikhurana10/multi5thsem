@@ -3,3 +3,5 @@ outputs/
 __pycache__/
 *.brf
 *.pdf
+.env
+venv/
